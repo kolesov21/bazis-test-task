@@ -56,17 +56,6 @@ watch(
       </p>
     </aside>
     <div class="workspace-content">
-      <header class="topbar">
-        <div class="breadcrumbs">
-          <AppIcon name="note" /><NuxtLink to="/">Мои заметки</NuxtLink
-          ><template v-if="route.path !== '/'"
-            ><span class="breadcrumb-divider">/</span
-            ><span>{{
-              route.params.id === 'new' ? 'Новая заметка' : 'Редактирование'
-            }}</span></template
-          >
-        </div>
-      </header>
       <main id="main" tabindex="-1">
         <div v-if="store.error" class="notice notice-error global-notice" role="alert">
           {{ store.error }} <button class="text-button" @click="store.sync">Проверить снова</button>
