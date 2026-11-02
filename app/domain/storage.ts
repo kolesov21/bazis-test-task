@@ -71,13 +71,13 @@ export function writeRecord(
     )
   }
   const record: StoredNote = { version: 1, revision: crypto.randomUUID(), note }
-  // An immutable deletion marker wins even if a browser temporarily serves a stale storage cache.
+  // Отдельный маркер удаления защищает от поздних записей из устаревшей вкладки.
   storage.setItem((note === null ? DELETED_PREFIX : NOTE_PREFIX) + id, JSON.stringify(record))
   if (note === null) {
     try {
       storage.removeItem(NOTE_PREFIX + id)
     } catch {
-      /* The deletion is already durable; stale content remains hidden by the marker. */
+      // Маркер уже записан: ошибка очистки не отменяет удаление.
     }
   }
   return record
@@ -107,10 +107,9 @@ export function storageMessage(error: unknown): string {
   return 'Хранилище недоступно или содержит повреждённые данные. Проверьте настройки и свободное место в браузере. Ваши изменения не сохранены.'
 }
 
-// Serialize the revision check and write across tabs, not only within one event loop.
 export async function withNoteLock<T>(id: string, action: () => T): Promise<T> {
   if (typeof window !== 'undefined' && navigator.locks)
     return navigator.locks.request(NOTE_PREFIX + id, action)
-  // shortcut: optimistic checks only without Web Locks; deployment requires modern browsers and HTTPS.
+  // shortcut: без Web Locks возможна гонка записей; для гарантии нужен браузер с Web Locks и HTTPS.
   return action()
 }

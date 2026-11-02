@@ -49,7 +49,7 @@ export function useNoteEditor(routeId: string) {
   watch(
     () => store.records[routeId],
     (record) => {
-      // Повторное чтение заполняет только ещё не начатую сессию редактора.
+      // Повторное чтение не должно заменять текущие правки или восстановленный черновик.
       if (!missing.value || !record?.note) return
       Object.assign(note, copyNote(record.note))
       baseline.value = copyNote(record.note)
@@ -223,7 +223,7 @@ export function useNoteEditor(routeId: string) {
       return
     if (!(event.ctrlKey || event.metaKey)) return
     if (event.code === 'KeyZ') {
-      // One history owns both fields and page actions; native undo must not replay a second change.
+      // Подавляем нативную отмену поля, чтобы одно нажатие не отменяло два изменения.
       event.preventDefault()
       if (event.shiftKey) redo()
       else undo()

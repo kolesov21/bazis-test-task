@@ -6,7 +6,6 @@ type Change =
   | { kind: 'toggle'; id: string; before: boolean; after: boolean }
   | { kind: 'insert' | 'remove'; todo: Todo; index: number }
 
-// History stores reversible operations, never snapshots of entire notes.
 export class NoteHistory {
   private past: Change[] = []
   private future: Change[] = []
