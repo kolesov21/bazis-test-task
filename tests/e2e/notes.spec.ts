@@ -213,6 +213,38 @@ test('creates, previews, edits, reloads and confirms deletion', async ({ page })
   expect(errors).toEqual([])
 })
 
+test('creates, saves, copies and deletes notes without randomUUID', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true })
+  })
+  const originalURL = await createNote(page)
+  await page.reload()
+  await expect(page.getByLabel('Название заметки', { exact: true })).toHaveValue('Планы на неделю')
+  await expect(page.getByRole('textbox', { name: 'Текст задачи 1', exact: true })).toHaveValue(
+    'Подготовить проект',
+  )
+  const second = await context.newPage()
+  await second.goto(originalURL)
+  await second.getByLabel('Название заметки', { exact: true }).fill('Другая версия')
+  await saveNote(second)
+  await expect(page.getByRole('button', { name: 'Сохранить как новую' })).toBeVisible()
+  await page.getByRole('button', { name: 'Сохранить как новую' }).click()
+  await expect(page).not.toHaveURL(originalURL)
+  const copyURL = page.url()
+  await page.reload()
+  await expect(page.getByLabel('Название заметки', { exact: true })).toHaveValue('Планы на неделю')
+  await page.getByRole('button', { name: 'Удалить заметку', exact: true }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Удалить заметку', exact: true })
+    .click()
+  await expect(page).toHaveURL('/')
+  await expect(page.locator('.note-preview')).toHaveCount(1)
+  await expect(page.locator('.note-preview')).toContainText('Другая версия')
+  await page.goto(copyURL)
+  await expect(page.getByRole('heading', { name: 'Заметка не найдена' })).toBeVisible()
+})
+
 test('groups typing, undoes and redoes from focused text fields', async ({ page }) => {
   await createNote(page)
   const title = page.getByLabel('Название заметки', { exact: true })

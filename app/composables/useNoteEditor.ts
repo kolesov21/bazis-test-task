@@ -1,5 +1,6 @@
 import { copyNote, sameContent, validateNote, type Note } from '../domain/notes'
 import { NoteHistory } from '../domain/history'
+import { createId } from '../domain/id'
 import { DRAFT_PREFIX, readDraft, storageMessage, type Draft } from '../domain/storage'
 
 export function useNoteEditor(routeId: string) {
@@ -12,7 +13,7 @@ export function useNoteEditor(routeId: string) {
     initial
       ? copyNote(initial)
       : {
-          id: isNew ? crypto.randomUUID() : routeId,
+          id: isNew ? createId() : routeId,
           title: '',
           todos: [],
           updatedAt: new Date().toISOString(),
@@ -133,7 +134,7 @@ export function useNoteEditor(routeId: string) {
     if (!blocked.value) history.redo()
   }
   async function addTodo(): Promise<void> {
-    const id = crypto.randomUUID()
+    const id = createId()
     history.insert({ id, text: '', done: false })
     await nextTick()
     document.getElementById(`todo-${id}`)?.focus()
@@ -156,7 +157,7 @@ export function useNoteEditor(routeId: string) {
       return
     }
     const candidate = copyNote(note)
-    if (asCopy) candidate.id = crypto.randomUUID()
+    if (asCopy) candidate.id = createId()
     saving.value = true
     const saved = await store.save(candidate, asCopy ? null : baseRevision.value)
     saving.value = false

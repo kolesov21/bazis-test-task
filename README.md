@@ -38,6 +38,8 @@ docker compose up --build
 
 Приложение доступно на http://localhost:3000. База данных и том для заметок не нужны: они сохраняются в браузере посетителя.
 
+Открывайте именно `localhost:3000`: `0.0.0.0` в логах — адрес прослушивания сервера. По HTTP вне localhost браузер не предоставляет Web Locks, поэтому для внешнего размещения нужен HTTPS.
+
 ## Проверки
 
 ```sh
@@ -54,6 +56,14 @@ npm run test:e2e
 ```
 
 Проекты: `chromium`, `firefox`, `webkit`, `mobile` (эмуляция iPhone 13 в WebKit). Для отдельного проекта: `npm run test:e2e -- --project=chromium`.
+
+Для проверки уже запущенного Docker-контейнера теми же тестами:
+
+```sh
+PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
+```
+
+При заданном `PLAYWRIGHT_BASE_URL` Playwright использует указанный сервер и не запускает локальный preview.
 
 ## Структура
 

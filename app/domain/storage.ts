@@ -1,4 +1,5 @@
 import { isNote, type Note } from './notes'
+import { createId } from './id'
 
 export const NOTE_PREFIX = 'bazis:note:'
 export const DELETED_PREFIX = 'bazis:deleted:'
@@ -70,7 +71,7 @@ export function writeRecord(
       'Заметка изменилась в другой вкладке. Ваши изменения остались в редакторе.',
     )
   }
-  const record: StoredNote = { version: 1, revision: crypto.randomUUID(), note }
+  const record: StoredNote = { version: 1, revision: createId(), note }
   // Отдельный маркер удаления защищает от поздних записей из устаревшей вкладки.
   storage.setItem((note === null ? DELETED_PREFIX : NOTE_PREFIX) + id, JSON.stringify(record))
   if (note === null) {
