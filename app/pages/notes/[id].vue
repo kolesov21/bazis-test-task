@@ -38,7 +38,6 @@ useHead({ title: () => `${note.title || (isNew ? 'Новая заметка' : '
       <button class="text-button" @click="restore">Выбрать действие</button>
     </div>
     <div v-if="missing" class="empty-state not-found">
-      <AppIcon name="note" />
       <h1>Заметка не найдена</h1>
       <p>Возможно, её удалили или в ссылке есть ошибка.</p>
       <NuxtLink to="/" class="button"><AppIcon name="arrow" />К заметкам</NuxtLink>
@@ -58,7 +57,6 @@ useHead({ title: () => `${note.title || (isNew ? 'Новая заметка' : '
           }}</span
         >
       </div>
-      <div class="page-symbol"><AppIcon name="note" /></div>
       <h1 class="sr-only">{{ isNew ? 'Новая заметка' : 'Редактирование заметки' }}</h1>
       <label class="sr-only" for="note-title">Название заметки</label>
       <input

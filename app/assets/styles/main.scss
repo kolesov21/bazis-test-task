@@ -145,6 +145,12 @@ button {
   overflow: hidden;
   white-space: nowrap;
 }
+.sidebar-hint {
+  margin: auto 10px 0;
+  padding-top: 24px;
+  color: $muted;
+  font-size: 12px;
+}
 .status-dot {
   display: inline-block;
   width: 6px;
@@ -181,10 +187,6 @@ button {
 .breadcrumb-divider {
   color: #c9c8c5;
 }
-.topbar-caption {
-  font-size: 11px;
-  color: $muted;
-}
 main:focus {
   outline: none;
 }
@@ -192,15 +194,6 @@ main:focus {
   width: min(100% - 112px, 800px);
   margin: 54px auto 0;
   padding-bottom: 32px;
-}
-.page-symbol {
-  margin-bottom: 20px;
-  color: #54524d;
-  .icon {
-    width: 43px;
-    height: 43px;
-    stroke-width: 1.2;
-  }
 }
 h1,
 h2,
@@ -219,11 +212,7 @@ h1 {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-}
-.page-description {
-  color: $muted;
-  font-size: 14px;
-  margin: 13px 0 36px;
+  margin-bottom: 32px;
 }
 .button {
   display: inline-flex;
@@ -410,49 +399,6 @@ h1 {
     color: $muted;
     line-height: 1.75;
     margin-bottom: 23px;
-  }
-}
-.empty-sheet {
-  position: relative;
-  width: 90px;
-  height: 108px;
-  border: 1px solid #deded9;
-  border-radius: 5px;
-  box-shadow: 5px 5px 0 #f7f7f5;
-  margin: 0 auto 27px;
-  padding: 13px 14px;
-  text-align: left;
-  > .icon {
-    width: 20px;
-    height: 20px;
-    color: #a6a49d;
-    margin-bottom: 7px;
-  }
-}
-.sheet-line {
-  width: 52px;
-  height: 3px;
-  background: #e4e4e0;
-  margin: 4px 0;
-  &.short {
-    width: 34px;
-  }
-}
-.sheet-task {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  span {
-    width: 7px;
-    height: 7px;
-    border: 1px solid #c7c6c0;
-    border-radius: 1px;
-  }
-  i {
-    width: 39px;
-    height: 2px;
-    background: #e4e4e0;
   }
 }
 .document-footer {
@@ -706,12 +652,6 @@ h1 {
 }
 .not-found {
   padding-top: 70px;
-  > .icon {
-    width: 44px;
-    height: 44px;
-    color: #a5a39d;
-    margin-bottom: 20px;
-  }
   h1 {
     font-size: 28px;
     margin-bottom: 14px;
@@ -784,9 +724,6 @@ h1 {
   .topbar {
     padding-inline: 24px;
   }
-  .topbar-caption {
-    display: none;
-  }
 }
 @media (max-width: 700px) {
   .sidebar {
@@ -814,6 +751,12 @@ h1 {
       display: block;
     }
   }
+  .sidebar-hint {
+    display: none;
+    &.is-open {
+      display: block;
+    }
+  }
   .workspace-content {
     margin-left: 0;
   }
@@ -825,13 +768,6 @@ h1 {
     width: calc(100% - 40px);
     margin-top: 24px;
   }
-  .page-symbol {
-    margin-bottom: 16px;
-    .icon {
-      width: 36px;
-      height: 36px;
-    }
-  }
   .page-title-row {
     align-items: flex-start;
     gap: 12px;
@@ -842,10 +778,6 @@ h1 {
       font-size: 11px;
       padding-inline: 9px;
     }
-  }
-  .page-description {
-    font-size: 13px;
-    margin-top: 12px;
   }
   .note-preview {
     gap: 10px;

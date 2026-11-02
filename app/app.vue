@@ -18,7 +18,7 @@ watch(
         <NuxtLink to="/" class="brand-link">Базис</NuxtLink>
         <button
           class="icon-button mobile-menu"
-          aria-controls="workspace-nav"
+          aria-controls="workspace-nav storage-hint"
           :aria-expanded="mobileOpen"
           aria-label="Открыть навигацию"
           @click="mobileOpen = !mobileOpen"
@@ -51,6 +51,9 @@ watch(
           >
         </template>
       </nav>
+      <p id="storage-hint" class="sidebar-hint" :class="{ 'is-open': mobileOpen }">
+        Заметки хранятся в этом браузере и доступны после перезагрузки.
+      </p>
     </aside>
     <div class="workspace-content">
       <header class="topbar">
@@ -63,7 +66,6 @@ watch(
             }}</span></template
           >
         </div>
-        <span class="topbar-caption">Ваше личное пространство</span>
       </header>
       <main id="main" tabindex="-1">
         <div v-if="store.error" class="notice notice-error global-notice" role="alert">

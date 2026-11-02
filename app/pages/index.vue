@@ -22,14 +22,12 @@ async function remove(note: Note): Promise<void> {
 
 <template>
   <section class="document notes-page" aria-labelledby="page-heading">
-    <div class="page-symbol"><AppIcon name="note" /></div>
     <div class="page-title-row">
       <h1 id="page-heading">Мои заметки</h1>
       <NuxtLink to="/notes/new" class="button button-primary"
         ><AppIcon name="plus" />Новая заметка</NuxtLink
       >
     </div>
-    <p class="page-description">Мысли, планы и дела. Всё на своих местах.</p>
     <div class="collection-heading">
       <span
         ><AppIcon name="grid" />Все заметки
@@ -40,23 +38,8 @@ async function remove(note: Note): Promise<void> {
       <NotePreview v-for="note in store.notes" :key="note.id" :note="note" @remove="remove(note)" />
     </div>
     <div v-else class="empty-state">
-      <div class="empty-sheet" aria-hidden="true">
-        <AppIcon name="note" />
-        <div class="sheet-line" />
-        <div class="sheet-line short" />
-        <div class="sheet-task"><span /><i /></div>
-        <div class="sheet-task"><span /><i /></div>
-      </div>
       <h2>Большие планы начинаются с заметки</h2>
       <p>Запишите идею, составьте список дел<br />или освободите голову от мелочей.</p>
-      <NuxtLink to="/notes/new" class="button"
-        ><AppIcon name="plus" />Создать первую заметку</NuxtLink
-      >
     </div>
-    <footer class="document-footer">
-      <AppIcon name="note" /><span
-        >Заметки хранятся в этом браузере и доступны после перезагрузки.</span
-      >
-    </footer>
   </section>
 </template>
