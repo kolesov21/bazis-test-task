@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import type { Draft } from '../../app/domain/storage'
 
 async function saveNote(page: Page) {
   await page.getByRole('button', { name: 'Сохранить изменения', exact: true }).click()
@@ -25,6 +26,27 @@ async function dismissChanges(page: Page) {
     .getByRole('dialog')
     .getByRole('button', { name: 'Отменить редактирование', exact: true })
     .click()
+}
+
+async function blockDraftRemoval(page: Page) {
+  await page.evaluate(() => {
+    const original = Storage.prototype.removeItem
+    const testWindow = window as typeof window & { restoreDraftRemoval?: () => void }
+    testWindow.restoreDraftRemoval = () => {
+      Storage.prototype.removeItem = original
+    }
+    Storage.prototype.removeItem = function (key: string) {
+      if (key.startsWith('bazis:draft:')) throw new DOMException('Blocked', 'SecurityError')
+      return original.call(this, key)
+    }
+  })
+}
+
+async function unblockDraftRemoval(page: Page) {
+  await page.evaluate(() => {
+    const testWindow = window as typeof window & { restoreDraftRemoval?: () => void }
+    testWindow.restoreDraftRemoval?.()
+  })
 }
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
@@ -506,3 +528,212 @@ test('keeps a draft when reloading while a save waits for a lock', async ({ page
   )
   await second.close()
 })
+
+for (const deleteOriginal of [false, true]) {
+  test(`recovers a copied new-note draft after the original is ${deleteOriginal ? 'deleted' : 'saved'}`, async ({
+    page,
+    context,
+  }) => {
+    await page.goto('/notes/new')
+    await page.getByLabel('Название заметки', { exact: true }).fill('Исходная заметка')
+    await expect
+      .poll(() => page.evaluate(() => sessionStorage.getItem('bazis:draft:new')))
+      .not.toBeNull()
+    const popupPromise = context.waitForEvent('page')
+    await page.evaluate(() => {
+      window.open('/notes/new', '_blank')
+    })
+    const second = await popupPromise
+    await second
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Восстановить', exact: true })
+      .click()
+    await second.getByLabel('Название заметки', { exact: true }).fill('Отдельная копия')
+    await saveNote(page)
+    await expect(
+      page.getByRole('heading', { name: 'Редактирование заметки', exact: true }),
+    ).toBeAttached()
+    const originalUrl = page.url()
+    if (deleteOriginal) {
+      await page.getByRole('button', { name: 'Удалить заметку', exact: true }).click()
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Удалить заметку', exact: true })
+        .click()
+      await expect(page.getByRole('heading', { name: 'Мои заметки', exact: true })).toBeVisible()
+    }
+    await expect(second.locator('.notice-warning')).toContainText(
+      deleteOriginal ? 'удалена' : 'изменена',
+    )
+    await expect(
+      second.getByRole('button', { name: 'Сохранить изменения', exact: true }),
+    ).toBeDisabled()
+    await second.getByRole('button', { name: 'Сохранить как новую' }).click()
+    await expect(
+      second.getByRole('heading', { name: 'Редактирование заметки', exact: true }),
+    ).toBeAttached()
+    expect(second.url()).not.toBe(originalUrl)
+    await expect(second.getByLabel('Название заметки', { exact: true })).toHaveValue(
+      'Отдельная копия',
+    )
+    expect(await second.evaluate(() => sessionStorage.getItem('bazis:draft:new'))).toBeNull()
+    await second.reload()
+    await expect(second.getByLabel('Название заметки', { exact: true })).toHaveValue(
+      'Отдельная копия',
+    )
+    await expect(second.getByRole('dialog')).not.toBeVisible()
+    await page.goto(originalUrl)
+    if (deleteOriginal)
+      await expect(page.getByRole('heading', { name: 'Заметка не найдена' })).toBeVisible()
+    else
+      await expect(page.getByLabel('Название заметки', { exact: true })).toHaveValue(
+        'Исходная заметка',
+      )
+  })
+}
+
+for (const action of ['cancel', 'navigate'] as const) {
+  test(`keeps the editor and history when draft cleanup fails during ${action}`, async ({
+    page,
+  }) => {
+    await page.goto('/notes/new')
+    const title = page.getByLabel('Название заметки', { exact: true })
+    await title.fill('Сохранить черновик при ошибке')
+    await expect
+      .poll(() => page.evaluate(() => sessionStorage.getItem('bazis:draft:new')))
+      .not.toBeNull()
+    const draft = JSON.parse(
+      (await page.evaluate(() => sessionStorage.getItem('bazis:draft:new')))!,
+    ) as Draft
+    await blockDraftRemoval(page)
+    const leave = () =>
+      action === 'cancel'
+        ? page.getByRole('button', { name: 'Отменить', exact: true }).click()
+        : page.getByRole('link', { name: 'Все заметки', exact: true }).last().click()
+    await leave()
+    await dismissChanges(page)
+    await expect(page.getByRole('alert')).toContainText('Не удалось удалить черновик')
+    await expect(page).toHaveURL('/notes/new')
+    await expect(title).toHaveValue('Сохранить черновик при ошибке')
+    expect(
+      JSON.parse((await page.evaluate(() => sessionStorage.getItem('bazis:draft:new')))!),
+    ).toMatchObject({ version: draft.version, note: draft.note, baseRevision: draft.baseRevision })
+    await title.press('ControlOrMeta+z')
+    await expect(title).toHaveValue('')
+    await title.press('ControlOrMeta+Shift+z')
+    await expect(title).toHaveValue('Сохранить черновик при ошибке')
+    await unblockDraftRemoval(page)
+    await leave()
+    await dismissChanges(page)
+    await expect(page.getByRole('heading', { name: 'Мои заметки', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => sessionStorage.getItem('bazis:draft:new'))).toBeNull()
+  })
+}
+
+test('keeps recovery available when discarding a draft fails', async ({ page }) => {
+  await page.goto('/notes/new')
+  await page.getByLabel('Название заметки', { exact: true }).fill('Восстановить после ошибки')
+  await page.reload()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await blockDraftRemoval(page)
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить черновик' }).click()
+  await expect(page.getByRole('alert')).toContainText('Не удалось удалить черновик')
+  await expect(page.getByLabel('Название заметки', { exact: true })).toBeDisabled()
+  await unblockDraftRemoval(page)
+  await page.getByRole('button', { name: 'Выбрать действие' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Восстановить', exact: true }).click()
+  await expect(page.getByLabel('Название заметки', { exact: true })).toHaveValue(
+    'Восстановить после ошибки',
+  )
+  await saveNote(page)
+  await expect(
+    page.getByRole('heading', { name: 'Редактирование заметки', exact: true }),
+  ).toBeAttached()
+  expect(await page.evaluate(() => sessionStorage.getItem('bazis:draft:new'))).toBeNull()
+})
+
+for (const action of ['save', 'delete'] as const) {
+  test(`reports retained draft after a successful ${action}`, async ({ page }) => {
+    const url = action === 'delete' ? await createNote(page) : '/notes/new'
+    if (action === 'save') await page.goto(url)
+    await page.getByLabel('Название заметки', { exact: true }).fill('Текст черновика')
+    const draftKey = 'bazis:draft:' + new URL(page.url()).pathname.split('/').pop()!
+    await expect
+      .poll(() => page.evaluate((key) => sessionStorage.getItem(key), draftKey))
+      .not.toBeNull()
+    await blockDraftRemoval(page)
+    if (action === 'save') {
+      await saveNote(page)
+      await expect(
+        page.getByRole('heading', { name: 'Редактирование заметки', exact: true }),
+      ).toBeAttached()
+      await expect(page.getByLabel('Название заметки', { exact: true })).toHaveValue(
+        'Текст черновика',
+      )
+    } else {
+      await page.getByRole('button', { name: 'Удалить заметку', exact: true }).click()
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Удалить заметку', exact: true })
+        .click()
+      await expect(page.getByRole('heading', { name: 'Мои заметки', exact: true })).toBeVisible()
+      await expect(page.locator('.note-preview')).toHaveCount(0)
+    }
+    await expect(page.locator('.global-notice')).toContainText('Не удалось удалить черновик')
+    expect(await page.evaluate((key) => sessionStorage.getItem(key), draftKey)).not.toBeNull()
+  })
+}
+
+for (const restoreDraft of [false, true]) {
+  test(`retries an initial storage failure ${restoreDraft ? 'without replacing a recovered draft' : 'and opens the existing note'}`, async ({
+    page,
+  }) => {
+    const url = await createNote(page)
+    const title = page.getByLabel('Название заметки', { exact: true })
+    if (restoreDraft) await title.fill('Восстановленный черновик')
+    await page.addInitScript(() => {
+      const original = Storage.prototype.getItem
+      let failed = false
+      Storage.prototype.getItem = function (key: string) {
+        if (!failed && key.startsWith('bazis:note:')) {
+          failed = true
+          throw new DOMException('Temporary error', 'SecurityError')
+        }
+        return original.call(this, key)
+      }
+    })
+    await page.reload()
+    if (restoreDraft) {
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Восстановить', exact: true })
+        .click()
+      await title.fill('Правка после восстановления')
+    } else await expect(page.getByRole('heading', { name: 'Заметка не найдена' })).toBeVisible()
+    await page.getByRole('button', { name: 'Проверить снова' }).click()
+    await expect(page.locator('.global-notice')).toHaveCount(0)
+    await expect(title).toHaveValue(
+      restoreDraft ? 'Правка после восстановления' : 'Планы на неделю',
+    )
+    if (restoreDraft) {
+      await title.press('ControlOrMeta+z')
+      await expect(title).toHaveValue('Восстановленный черновик')
+    } else {
+      await expect(page.locator('.editing-status')).toHaveText('Сохранено')
+      await expect(
+        page.getByRole('button', { name: 'Отменить изменение', exact: true }),
+      ).toBeDisabled()
+      await title.fill('Правка после повторного чтения')
+    }
+    await saveNote(page)
+    await expect(page).toHaveURL(url)
+    const id = new URL(url).pathname.split('/').pop()!
+    const savedTitle = await page.evaluate(
+      (noteId) => JSON.parse(localStorage.getItem('bazis:note:' + noteId)!).note.title as string,
+      id,
+    )
+    expect(savedTitle).toBe(
+      restoreDraft ? 'Восстановленный черновик' : 'Правка после повторного чтения',
+    )
+  })
+}

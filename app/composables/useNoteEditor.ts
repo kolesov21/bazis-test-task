@@ -46,20 +46,33 @@ export function useNoteEditor(routeId: string) {
     void tick.value
     return history.canRedo
   })
-  const conflict = computed(
-    () =>
-      !isNew && !missing.value && (store.records[routeId]?.revision ?? null) !== baseRevision.value,
+  watch(
+    () => store.records[routeId],
+    (record) => {
+      // Повторное чтение заполняет только ещё не начатую сессию редактора.
+      if (!missing.value || !record?.note) return
+      Object.assign(note, copyNote(record.note))
+      baseline.value = copyNote(record.note)
+      baseRevision.value = record.revision
+      missing.value = false
+    },
   )
-  const deleted = computed(() => conflict.value && !store.records[routeId]?.note)
+  const conflict = computed(
+    () => !missing.value && (store.records[note.id]?.revision ?? null) !== baseRevision.value,
+  )
+  const deleted = computed(() => conflict.value && !store.records[note.id]?.note)
   const blocked = computed(() => recovery.value !== null || draftBlocked.value || saving.value)
 
-  function clearDraft(): void {
+  function clearDraft(): boolean {
     clearTimeout(timer)
     try {
-      draftStorage?.removeItem(DRAFT_PREFIX + routeId)
+      if (!draftStorage) throw new Error('No session storage')
+      draftStorage.removeItem(DRAFT_PREFIX + routeId)
       draftError.value = ''
-    } catch (error) {
-      draftError.value = storageMessage(error)
+      return true
+    } catch {
+      draftError.value = 'Не удалось удалить черновик. Он остался в этой вкладке.'
+      return false
     }
   }
 
@@ -97,6 +110,7 @@ export function useNoteEditor(routeId: string) {
       cancel: 'Удалить черновик',
     })
     if (result === null) return
+    if (!result && !clearDraft()) return
     recovery.value = null
     if (result) {
       Object.assign(note, copyNote(draft.note))
@@ -105,7 +119,7 @@ export function useNoteEditor(routeId: string) {
       history.clear()
       tick.value++
       message.value = 'Черновик восстановлен'
-    } else clearDraft()
+    }
   }
 
   function blur(): void {
@@ -152,9 +166,10 @@ export function useNoteEditor(routeId: string) {
     baseRevision.value = saved.revision
     history.clear()
     tick.value++
-    clearDraft()
+    const draftCleared = clearDraft()
     message.value = 'Изменения сохранены'
     if (isNew || asCopy) {
+      if (!draftCleared) store.error = draftError.value
       leaving = true
       await router.replace(`/notes/${saved.note.id}`)
     }
@@ -174,7 +189,7 @@ export function useNoteEditor(routeId: string) {
   }
   async function cancel(): Promise<void> {
     if (!(await confirmDiscard())) return
-    clearDraft()
+    if (!clearDraft()) return
     history.clear()
     leaving = true
     await router.push('/')
@@ -196,7 +211,7 @@ export function useNoteEditor(routeId: string) {
     const removed = await store.remove(routeId, revision)
     saving.value = false
     if (removed) {
-      clearDraft()
+      if (!clearDraft()) store.error = draftError.value
       history.clear()
       leaving = true
       await router.push('/')
@@ -248,7 +263,7 @@ export function useNoteEditor(routeId: string) {
     if (to.path === from.path) return true
     if (leaving || !dirty.value) return true
     if (!(await confirmDiscard())) return false
-    clearDraft()
+    if (!clearDraft()) return false
     history.clear()
     leaving = true
     return true
