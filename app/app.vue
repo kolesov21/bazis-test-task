@@ -15,9 +15,7 @@ watch(
     <a class="skip-link" href="#main">Перейти к содержимому</a>
     <aside class="sidebar" aria-label="Рабочее пространство">
       <div class="workspace-brand">
-        <NuxtLink to="/" class="brand-link"
-          ><span class="brand-mark">Б</span><span>Базис</span></NuxtLink
-        ><span class="personal-label">Личное</span>
+        <NuxtLink to="/" class="brand-link">Базис</NuxtLink>
         <button
           class="icon-button mobile-menu"
           aria-controls="workspace-nav"
@@ -53,11 +51,6 @@ watch(
           >
         </template>
       </nav>
-      <div class="sidebar-bottom">
-        <span class="local-dot" />Только в вашем браузере<span class="sidebar-bottom-hint"
-          >Место для ясных мыслей.</span
-        >
-      </div>
     </aside>
     <div class="workspace-content">
       <header class="topbar">
