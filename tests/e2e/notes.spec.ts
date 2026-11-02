@@ -27,6 +27,140 @@ async function dismissChanges(page: Page) {
     .click()
 }
 
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`mobile menu overlays content with ${reducedMotion} and keeps the header visible`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'Мобильная навигация')
+    await page.emulateMedia({ reducedMotion })
+    await page.addInitScript(() => {
+      for (let index = 0; index < 8; index++) {
+        const id = crypto.randomUUID()
+        localStorage.setItem(
+          `bazis:note:${id}`,
+          JSON.stringify({
+            version: 1,
+            revision: crypto.randomUUID(),
+            note: {
+              id,
+              title: `Заметка ${index + 1}`,
+              todos: [],
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        )
+      }
+    })
+    await page.goto('/')
+    const menu = page.getByRole('button', { name: 'Открыть навигацию', includeHidden: true })
+    const panel = page.locator('#sidebar-panel')
+    const backdrop = page.locator('.mobile-menu-backdrop')
+    const heading = page.getByRole('heading', { name: 'Мои заметки', exact: true })
+    const create = page.getByRole('main').getByRole('link', { name: 'Новая заметка' })
+    const headingBox = (await heading.boundingBox())!
+    const createBox = (await create.boundingBox())!
+    expect(createBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height)
+    await expect(panel).toHaveAttribute('inert', '')
+    await expect(backdrop).toBeHidden()
+    const before = await heading.boundingBox()
+    await menu.click()
+    await expect(panel).toBeVisible()
+    await expect(backdrop).toBeVisible()
+    await expect(panel).not.toHaveAttribute('inert')
+    expect(await heading.boundingBox()).toEqual(before)
+    const duration = await panel.evaluate((element) => getComputedStyle(element).transitionDuration)
+    if (reducedMotion === 'reduce') expect(duration).toBe('0s')
+    else expect(duration).toContain('0.16s')
+    await panel.getByRole('link', { name: /^Все заметки/ }).focus()
+    await page.keyboard.press('Escape')
+    await expect(panel).toBeHidden()
+    await expect(backdrop).toBeHidden()
+    await expect(menu).toBeFocused()
+    await panel.locator('a').first().focus()
+    await expect(menu).toBeFocused()
+    await page.keyboard.press('Tab')
+    expect(await panel.evaluate((element) => element.contains(document.activeElement))).toBe(false)
+    await menu.click()
+    expect(
+      await page.evaluate(() =>
+        document
+          .elementFromPoint(380, innerHeight - 10)
+          ?.classList.contains('mobile-menu-backdrop'),
+      ),
+    ).toBe(true)
+    await page.mouse.click(380, page.viewportSize()!.height - 10)
+    await expect(panel).toBeHidden()
+    await expect(backdrop).toBeHidden()
+    await expect(menu).toBeFocused()
+    await expect(page).toHaveURL('/')
+    await page.evaluate(() => window.scrollTo(0, 400))
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
+    expect((await page.locator('.sidebar').boundingBox())!.y).toBe(0)
+    await menu.click()
+    await expect(panel).toHaveCSS('opacity', '1')
+    expect((await panel.boundingBox())!.y).toBeCloseTo(
+      (await page.locator('.sidebar').boundingBox())!.height - 1,
+    )
+    await panel.getByRole('link', { name: 'Новая заметка', exact: true }).click()
+    await expect(page.getByLabel('Название заметки', { exact: true })).toBeVisible()
+    await expect(panel).toBeHidden()
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await page.setViewportSize({ width: 320, height: 400 })
+    await menu.click()
+    await page.locator('#storage-hint').scrollIntoViewIfNeeded()
+    const panelBox = (await panel.boundingBox())!
+    expect(panelBox.y + panelBox.height).toBeLessThanOrEqual(400)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await expect(menu).toBeHidden()
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect(panel).toBeVisible()
+    await expect(panel).not.toHaveAttribute('inert')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(menu).toBeVisible()
+    await expect(panel).toBeHidden()
+  })
+
+  test(`page motion respects ${reducedMotion} and keeps navigation guards`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion })
+    await page.addInitScript(() => {
+      const testWindow = window as typeof window & { pageTransitions: number }
+      testWindow.pageTransitions = 0
+      document.addEventListener('transitionrun', (event) => {
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.classList.contains('document') &&
+          event.propertyName === 'opacity'
+        )
+          testWindow.pageTransitions++
+      })
+    })
+    await page.goto('/')
+    await page.getByRole('main').getByRole('link', { name: 'Новая заметка' }).click()
+    const title = page.getByLabel('Название заметки', { exact: true })
+    await title.fill('Сохранить при переходе')
+    await page.getByRole('link', { name: 'Все заметки', exact: true }).last().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Продолжить' }).click()
+    await expect(page).toHaveURL('/notes/new')
+    await expect(title).toHaveValue('Сохранить при переходе')
+    await title.press('ControlOrMeta+z')
+    await expect(title).toHaveValue('')
+    await title.press('ControlOrMeta+Shift+z')
+    await expect(title).toHaveValue('Сохранить при переходе')
+    await page.getByRole('link', { name: 'Все заметки', exact: true }).last().click()
+    await dismissChanges(page)
+    await expect(page.getByRole('heading', { name: 'Мои заметки', exact: true })).toBeVisible()
+    await expect(page.locator('.page-enter-active, .page-leave-active')).toHaveCount(0)
+    const transitions = await page.evaluate(
+      () => (window as typeof window & { pageTransitions: number }).pageTransitions,
+    )
+    if (reducedMotion === 'reduce') expect(transitions).toBe(0)
+    else expect(transitions).toBeGreaterThanOrEqual(2)
+    expect(await page.evaluate(() => sessionStorage.getItem('bazis:draft:new'))).toBeNull()
+  })
+}
+
 test('creates, previews, edits, reloads and confirms deletion', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
@@ -208,6 +342,56 @@ test('truncates previews to three tasks and has no horizontal overflow', async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   )
+})
+
+test('expands multiline text while editing, undoing, restoring and viewing notes', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/notes/new')
+  const title = page.getByLabel('Название заметки', { exact: true })
+  const task = page.getByRole('textbox', { name: 'Текст задачи 1', exact: true })
+  const longTitle = 'Подробные планы на неделю '.repeat(5) + '\nВторая строка названия'
+  const longTask =
+    'Подготовить материалы и проверить результат. '.repeat(8) + '\n' + 'Слово'.repeat(40)
+  await title.fill(longTitle)
+  await page.getByRole('button', { name: 'Добавить задачу', exact: true }).click()
+  await task.fill(longTask)
+  await title.focus()
+  const fullHeight = (await task.boundingBox())!.height
+  await task.fill('Короткая задача')
+  await expect.poll(async () => (await task.boundingBox())!.height).toBeLessThan(fullHeight)
+  await task.press('ControlOrMeta+z')
+  await expect(task).toHaveValue(longTask)
+  await expect.poll(async () => (await task.boundingBox())!.height).toBe(fullHeight)
+  await task.press('ControlOrMeta+Shift+z')
+  await expect(task).toHaveValue('Короткая задача')
+  await task.press('ControlOrMeta+z')
+  await page.reload()
+  await page.getByRole('dialog').getByRole('button', { name: 'Восстановить', exact: true }).click()
+  await expect(title).toHaveValue(longTitle)
+  await expect(task).toHaveValue(longTask)
+  await saveNote(page)
+  await page.reload()
+  await expect(title).toHaveValue(longTitle)
+  await expect(task).toHaveValue(longTask)
+  await page.setViewportSize({ width: 320, height: 640 })
+  for (const field of [title, task]) {
+    await expect
+      .poll(() => field.evaluate((element) => element.scrollHeight - element.clientHeight))
+      .toBeLessThanOrEqual(1)
+    expect(await field.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+    expect((await field.boundingBox())!.height).toBeGreaterThan(60)
+  }
+  await page.getByRole('link', { name: 'Все заметки', exact: true }).last().click()
+  await expect(page.locator('.note-preview h2 a')).toHaveText(longTitle)
+  const preview = page.locator('.preview-todos li > span:last-child')
+  await expect(preview).toHaveText(longTask)
+  await expect(preview).toHaveCSS('white-space', 'pre-wrap')
+  expect((await preview.boundingBox())!.height).toBeGreaterThan(60)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  expect(errors).toEqual([])
 })
 
 test('confirms leaving when switching between editor routes', async ({ page }) => {

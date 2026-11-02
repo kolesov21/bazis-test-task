@@ -41,9 +41,6 @@ function trapFocus(event: KeyboardEvent): void {
     @keydown="trapFocus"
   >
     <template v-if="activeDialog">
-      <div class="dialog-symbol" :class="{ danger: activeDialog.danger }">
-        <AppIcon :name="activeDialog.danger ? 'trash' : 'note'" />
-      </div>
       <h2 id="dialog-title">{{ activeDialog.title }}</h2>
       <p id="dialog-description">{{ activeDialog.description }}</p>
       <div class="dialog-actions">

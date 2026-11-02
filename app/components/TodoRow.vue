@@ -15,7 +15,7 @@ defineEmits<{ text: [value: string]; toggle: []; remove: []; blur: [] }>()
       :aria-label="`Отметить задачу ${index + 1}: ${todo.text || 'без текста'}`"
       @change="$emit('toggle')"
     />
-    <input
+    <AutoTextarea
       :id="`todo-${todo.id}`"
       class="todo-input"
       :value="todo.text"
@@ -25,7 +25,7 @@ defineEmits<{ text: [value: string]; toggle: []; remove: []; blur: [] }>()
       :aria-describedby="invalid ? 'validation-error' : undefined"
       placeholder="Что нужно сделать?"
       autocomplete="off"
-      @input="$emit('text', ($event.target as HTMLInputElement).value)"
+      @input="$emit('text', ($event.target as HTMLTextAreaElement).value)"
       @blur="$emit('blur')"
     />
     <button

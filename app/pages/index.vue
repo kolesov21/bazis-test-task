@@ -28,18 +28,12 @@ async function remove(note: Note): Promise<void> {
         ><AppIcon name="plus" />Новая заметка</NuxtLink
       >
     </div>
-    <div class="collection-heading">
-      <span
-        ><AppIcon name="grid" />Все заметки
-        <span class="collection-count">{{ store.notes.length }}</span></span
-      >
-    </div>
     <div v-if="store.notes.length" class="notes-list">
       <NotePreview v-for="note in store.notes" :key="note.id" :note="note" @remove="remove(note)" />
     </div>
     <div v-else class="empty-state">
       <h2>Большие планы начинаются с заметки</h2>
-      <p>Запишите идею, составьте список дел<br />или освободите голову от мелочей.</p>
+      <p>Запишите идею, составьте список дел или освободите голову от мелочей.</p>
     </div>
   </section>
 </template>

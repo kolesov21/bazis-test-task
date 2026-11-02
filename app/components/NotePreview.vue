@@ -8,7 +8,6 @@ const date = (value: string) =>
 
 <template>
   <article class="note-preview">
-    <AppIcon name="note" class="note-preview-icon" />
     <div class="note-preview-body">
       <h2>
         <NuxtLink :to="`/notes/${note.id}`">{{ note.title }}</NuxtLink>

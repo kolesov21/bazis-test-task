@@ -6,6 +6,7 @@ export default defineNuxtConfig({
   css: ['~/assets/styles/main.scss'],
   typescript: { strict: true, tsConfig: { compilerOptions: { noUncheckedIndexedAccess: true } } },
   app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       title: 'Базис — заметки и задачи',
       htmlAttrs: { lang: 'ru' },

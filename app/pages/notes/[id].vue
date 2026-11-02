@@ -77,7 +77,7 @@ useHead({ title: () => `${note.title || (isNew ? 'Новая заметка' : '
       </div>
       <h1 class="sr-only">{{ isNew ? 'Новая заметка' : 'Редактирование заметки' }}</h1>
       <label class="sr-only" for="note-title">Название заметки</label>
-      <input
+      <AutoTextarea
         id="note-title"
         class="title-input"
         :value="note.title"
@@ -86,7 +86,7 @@ useHead({ title: () => `${note.title || (isNew ? 'Новая заметка' : '
         autocomplete="off"
         :aria-invalid="(!!validation && !note.title.trim()) || undefined"
         :aria-describedby="validation ? 'validation-error' : undefined"
-        @input="history.text({ field: 'title' }, ($event.target as HTMLInputElement).value)"
+        @input="history.text({ field: 'title' }, ($event.target as HTMLTextAreaElement).value)"
         @blur="blur"
       />
       <div v-if="conflict" class="notice notice-warning" role="alert">
