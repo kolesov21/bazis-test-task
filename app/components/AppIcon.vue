@@ -1,3 +1,18 @@
+<template>
+  <svg
+    class="icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path :d="paths[name]" />
+  </svg>
+</template>
+
 <script setup lang="ts">
 defineProps<{
   name:
@@ -28,17 +43,12 @@ const paths = {
 }
 </script>
 
-<template>
-  <svg
-    class="icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.6"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path :d="paths[name]" />
-  </svg>
-</template>
+<style scoped lang="scss">
+:where(.icon) {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+</style>

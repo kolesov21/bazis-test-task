@@ -1,0 +1,43 @@
+@use 'tokens' as *;
+
+.document {
+  width: min(100% - 112px, 800px);
+  margin: 54px auto 0;
+  padding-bottom: 32px;
+}
+.empty-state {
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    margin: 0 0 10px;
+  }
+  p {
+    font-size: 13px;
+    color: $muted;
+    line-height: 1.75;
+    margin: 0;
+  }
+}
+
+@media (min-width: 1500px) {
+  .document {
+    margin-top: 80px;
+  }
+}
+@media (max-width: 1050px) {
+  .document {
+    width: calc(100% - 64px);
+  }
+}
+@media (max-width: 700px) {
+  .document {
+    width: calc(100% - 40px);
+    margin-top: 24px;
+  }
+  .empty-state {
+    h2 {
+      font-size: 17px;
+    }
+  }
+}

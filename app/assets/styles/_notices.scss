@@ -1,0 +1,16 @@
+.notice {
+  font-size: 13px;
+  padding: 14px 16px;
+  border-radius: 5px;
+  background: #f3f5f7;
+  border: 1px solid #e4e9ee;
+  margin-bottom: 20px;
+  p {
+    margin: 6px 0 12px;
+  }
+}
+.notice-error {
+  background: #fdf4f3;
+  border-color: #efdad7;
+  color: #9c3029;
+}
